@@ -19,20 +19,21 @@ class Driver {
       maxDepth: 3,
       maxUrls: 10,
       maxWait: 5000,
+			proxy: null,
       recursive: false,
       userAgent: 'Mozilla/5.0 (compatible; Wappalyzer)',
       htmlMaxCols: 2000,
-      htmlMaxRows: 2000,
+      htmlMaxRows: 3000,
     }, options || {});
 
-    this.options.debug = Boolean(this.options.debug);
+    this.options.debug = Boolean(+this.options.debug);
+    this.options.recursive = Boolean(+this.options.recursive);
     this.options.delay = this.options.recursive ? parseInt(this.options.delay, 10) : 0;
     this.options.maxDepth = parseInt(this.options.maxDepth, 10);
     this.options.maxUrls = parseInt(this.options.maxUrls, 10);
     this.options.maxWait = parseInt(this.options.maxWait, 10);
     this.options.htmlMaxCols = parseInt(this.options.htmlMaxCols, 10);
     this.options.htmlMaxRows = parseInt(this.options.htmlMaxRows, 10);
-    this.options.recursive = Boolean(this.options.recursive);
 
     this.origPageUrl = url.parse(pageUrl);
     this.analyzedPageUrls = [];
@@ -113,6 +114,7 @@ class Driver {
 
   visit(pageUrl, timerScope, resolve) {
     const browser = new Browser({
+			proxy: this.options.proxy,
       silent: true,
       strictSSL: false,
       userAgent: this.options.userAgent,
@@ -144,7 +146,7 @@ class Driver {
         .then(() => {
           const links = Array.prototype.reduce.call(
             browser.document.getElementsByTagName('a'), (results, link) => {
-              if ( link.protocol.match(/https?:/) || link.hostname === this.origPageUrl.hostname || extensions.test(link.pathname) ) {
+              if ( link.protocol.match(/https?:/) && link.hostname === this.origPageUrl.hostname && extensions.test(link.pathname) ) {
                 link.hash = '';
 
                 results.push(url.parse(link.href));
@@ -296,7 +298,7 @@ class Driver {
       this.fetch(pageUrl, index, depth)
         .catch(() => {})
         .then(links => {
-          if ( links && Boolean(this.options.recursive) && depth < this.options.maxDepth ) {
+          if ( links && this.options.recursive && depth < this.options.maxDepth ) {
             return this.chunk(links.slice(0, this.options.maxUrls), depth + 1);
           } else {
             return Promise.resolve();
