@@ -1,17 +1,38 @@
 /** global: browser */
 /** global: XMLSerializer */
 
+/* global browser, chrome */
+/* eslint-env browser */
+
+function sendMessage(id, subject, callback) {
+  (chrome || browser).runtime.sendMessage({
+    id,
+    subject,
+    source: 'content.js',
+  }, callback || (() => {}));
+}
+
 if (typeof browser !== 'undefined' && typeof document.body !== 'undefined') {
   try {
     sendMessage('init', {});
 
     // HTML
-    let html = new XMLSerializer().serializeToString(document).split('\n');
+    let html = new XMLSerializer().serializeToString(document);
 
-    html = html
-      .slice(0, 1000).concat(html.slice(html.length - 1000))
-      .map(line => line.substring(0, 1000))
-      .join('\n');
+    const chunks = [];
+    const maxCols = 2000;
+    const maxRows = 3000;
+    const rows = html.length / maxCols;
+
+    let i;
+
+    for (i = 0; i < rows; i += 1) {
+      if (i < maxRows / 2 || i > rows - maxRows / 2) {
+        chunks.push(html.slice(i * maxCols, (i + 1) * maxCols));
+      }
+    }
+
+    html = chunks.join('\n');
 
     // Scripts
     const scripts = Array.prototype.slice
@@ -31,14 +52,14 @@ if (typeof browser !== 'undefined' && typeof document.body !== 'undefined') {
           return;
         }
 
-        removeEventListener('message', onMessage);
+        window.removeEventListener('message', onMessage);
 
         sendMessage('analyze', { js: event.data.js });
 
         script.remove();
       };
 
-      addEventListener('message', onMessage);
+      window.addEventListener('message', onMessage);
 
       sendMessage('get_js_patterns', {}, (response) => {
         if (response) {
@@ -58,14 +79,6 @@ if (typeof browser !== 'undefined' && typeof document.body !== 'undefined') {
   }
 }
 
-function sendMessage(id, subject, callback) {
-  (chrome || browser).runtime.sendMessage({
-    id,
-    subject,
-    source: 'content.js',
-  }, callback || (() => {}));
-}
-
 // https://stackoverflow.com/a/44774834
 // https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/tabs/executeScript#Return_value
-undefined;
+undefined; // eslint-disable-line no-unused-expressions
