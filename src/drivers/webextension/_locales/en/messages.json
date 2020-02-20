@@ -8,6 +8,7 @@
 	"optionUpgradeMessage":     { "message": "Tell me about upgrades" },
 	"optionDynamicIcon":        { "message": "Use technology icon instead of Wappalyzer logo" },
 	"optionTracking":           { "message": "Anonymously send identified technologies to wappalyzer.com" },
+	"optionThemeMode":          { "message": "Enable dark mode compatibility." },
 	"nothingToDo":              { "message": "Nothing to do here." },
 	"noAppsDetected":           { "message": "No technologies detected." },
   "categoryPin":              { "message": "Always show icon" },
@@ -78,5 +79,6 @@
 	"categoryName62":           { "message": "PaaS" },
 	"categoryName63":           { "message": "IaaS" },
 	"categoryName64":           { "message": "Reverse Proxy" },
-	"categoryName65":           { "message": "Load Balancer" }
+	"categoryName65":           { "message": "Load Balancer" },
+	"categoryName66":           { "message": "UI Frameworks" }
 }

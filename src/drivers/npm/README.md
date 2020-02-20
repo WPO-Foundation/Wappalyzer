@@ -18,29 +18,38 @@ $ npm i -g wappalyzer      # Globally
 $ npm i wappalyzer --save  # As a dependency
 ```
 
+To use Puppeteer (headless Chrome browser), you must install the NPM package manually:
+
+```shell
+$ npm i puppeteer@^2.0.0
+```
+
 
 ## Run from the command line
 
 ```
-wappalyzer [url] [options]
+wappalyzer <url> [options]
 ```
 
 ### Options
 
 ```
---password           Password to be used for basic HTTP authentication
---proxy              Proxy URL, e.g. 'http://user:pass@proxy:8080'
---username           Username to be used for basic HTTP authentication
---chunk-size=num     Process links in chunks.
---debug=0|1          Output debug messages.
---delay=ms           Wait for ms milliseconds between requests.
---html-max-cols=num  Limit the number of HTML characters per line processed.
---html-max-rows=num  Limit the number of HTML lines processed.
---max-depth=num      Don't analyse pages more than num levels deep.
---max-urls=num       Exit when num URLs have been analysed.
---max-wait=ms        Wait no more than ms milliseconds for page resources to load.
---recursive=0|1      Follow links on pages (crawler).
---user-agent=str     Set the user agent string.
+-b, --browser=...        Specify which headless browser to use (zombie or puppeteer)
+-c, --chunk-size=...     Process links in chunks
+-d, --debug              Output debug messages
+-t, --delay=ms           Wait for ms milliseconds between requests
+-h, --help               This text
+--html-max-cols=...      Limit the number of HTML characters per line processed
+--html-max-rows=...      Limit the number of HTML lines processed
+-D, --max-depth=...      Don't analyse pages more than num levels deep
+-m, --max-urls=...       Exit when num URLs have been analysed
+-w, --max-wait=...       Wait no more than ms milliseconds for page resources to load
+-p, --password=...       Password to be used for basic HTTP authentication (zombie only)
+-P, --pretty             Pretty-print JSON output
+--proxy=...              Proxy URL, e.g. 'http://user:pass@proxy:8080' (zombie only)
+-r, --recursive          Follow links on pages (crawler)
+-a, --user-agent=...     Set the user agent string
+-u, --username=...       Username to be used for basic HTTP authentication (zombie only)
 ```
 
 
@@ -52,6 +61,7 @@ const Wappalyzer = require('wappalyzer');
 const url = 'https://www.wappalyzer.com';
 
 const options = {
+  // browser: 'puppeteer',
   debug: false,
   delay: 500,
   maxDepth: 3,
@@ -65,9 +75,6 @@ const options = {
 
 const wappalyzer = new Wappalyzer(url, options);
 
-// Optional: set the browser to use
-// wappalyzer.browser = Wappalyzer.browsers.zombie;
-
 // Optional: capture log output
 // wappalyzer.on('log', params => {
 //   const { message, source, type } = params;
@@ -79,14 +86,14 @@ const wappalyzer = new Wappalyzer(url, options);
 // });
 
 wappalyzer.analyze()
-  .then(json => {
+  .then((json) => {
     process.stdout.write(`${JSON.stringify(json, null, 2)}\n`);
 
     process.exit(0);
   })
-  .catch(error => {
+  .catch((error) => {
     process.stderr.write(`${error}\n`);
 
     process.exit(1);
-});
+  });
 ```

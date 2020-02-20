@@ -4,7 +4,7 @@
   "author": "Elbert Alias",
   "homepage_url": "https://www.wappalyzer.com",
   "description": "Identify web technologies",
-  "version": "5.8.4",
+  "version": "5.9.4",
   "default_locale": "en",
   "manifest_version": 2,
   "icons": {
@@ -74,11 +74,5 @@
     "http://*/*",
     "https://*/*"
   ],
-  "content_security_policy": "script-src 'self'; object-src 'self'",
-  "applications": {
-    "gecko": {
-      "id": "wappalyzer@crunchlabz.com",
-      "strict_min_version": "60.0"
-    }
-  }
+  "content_security_policy": "script-src 'self'; object-src 'self'"
 }

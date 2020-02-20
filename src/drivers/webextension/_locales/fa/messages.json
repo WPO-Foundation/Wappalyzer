@@ -8,6 +8,7 @@
 	"optionUpgradeMessage":     { "message": "درباره ارتقا به من بگویید" },
 	"optionDynamicIcon":        { "message": "از نماد فن آوری به جای علامت Wappalyzer استفاده شود" },
 	"optionTracking":           { "message": "ارسال فن آوری های شناسایی شده به صورت ناشناس به wappalyzer.com" },
+  "optionThemeMode":          { "message": "فعال کردن حالت سازگاری تاریک." },
 	"nothingToDo":              { "message": "هیچ چیز برای انجام اینجا نیست." },
 	"noAppsDetected":           { "message": "هیچ فن‌آوری شناسایی نشده است." },
 	"categoryPin":              { "message": "همیشه نماد را نشان بده" },
@@ -77,5 +78,6 @@
 	"categoryName62":           { "message": "PaaS" },
 	"categoryName63":           { "message": "IaaS" },
 	"categoryName64":           { "message": "Reverse Proxy" },
-	"categoryName65":           { "message": "Load Balancer" }
+	"categoryName65":           { "message": "Load Balancer" },
+	"categoryName66":           { "message": "UI Frameworks" }
 }

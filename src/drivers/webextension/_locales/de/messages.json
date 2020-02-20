@@ -8,6 +8,7 @@
 	"optionUpgradeMessage":     { "message": "Benachrichtige mich bei Upgrades" },
 	"optionDynamicIcon":        { "message": "Applikations Icon anstatt des Wappalyzer Icons verwenden" },
 	"optionTracking":           { "message": "Anonyme Statistiken an wappalyzer.com übermitteln" },
+  "optionThemeMode":          { "message": "Aktivieren dunklen Modus Kompatibilität." },
 	"nothingToDo":              { "message": "Nichts zu tun." },
 	"noAppsDetected":           { "message": "Keine Applikation entdeckt." },
   "categoryPin":              { "message": "Immer Icon anzeigen" },
@@ -77,5 +78,6 @@
 	"categoryName62":           { "message": "PaaS" },
 	"categoryName63":           { "message": "IaaS" },
 	"categoryName64":           { "message": "Reverse Proxy" },
-	"categoryName65":           { "message": "Load Balancer" }
+	"categoryName65":           { "message": "Load Balancer" },
+	"categoryName66":           { "message": "UI Frameworks" }
 }

@@ -8,6 +8,7 @@
 	"optionUpgradeMessage":     { "message": "Сповіщати про оновлення" },
 	"optionDynamicIcon":        { "message": "Використовувати значок застосунку замість логотипу Wappalyzer" },
 	"optionTracking":           { "message": "Анонімно надсилати статистику розпізнавань на сервер для досліджень" },
+  "optionThemeMode":          { "message": "Включити сумісність темного режиму." },
 	"nothingToDo":              { "message": "Тут нічого робити." },
 	"noAppsDetected":           { "message": "Нічого не знайдено." },
   "categoryPin":              { "message": "Always show icon" },
@@ -77,5 +78,6 @@
 	"categoryName62":           { "message": "PaaS" },
 	"categoryName63":           { "message": "IaaS" },
 	"categoryName64":           { "message": "Reverse Proxy" },
-	"categoryName65":           { "message": "Load Balancer" }
+	"categoryName65":           { "message": "Load Balancer" },
+	"categoryName66":           { "message": "UI Frameworks" }
 }
