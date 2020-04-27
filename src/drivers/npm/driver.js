@@ -1,7 +1,12 @@
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
+const LanguageDetect = require('languagedetect');
 const Wappalyzer = require('./wappalyzer');
+
+const languageDetect = new LanguageDetect();
+
+languageDetect.setLanguageType('iso2');
 
 const json = JSON.parse(fs.readFileSync(path.resolve(`${__dirname}/apps.json`)));
 
@@ -79,7 +84,6 @@ class Driver {
       maxUrls: 10,
       maxWait: 5000,
       recursive: false,
-      userAgent: 'Mozilla/5.0 (compatible; Wappalyzer)',
     }, options || {});
 
     this.options.debug = Boolean(+this.options.debug);
@@ -225,20 +229,18 @@ class Driver {
       throw new Error('NO_RESPONSE');
     }
 
-    if (browser.statusCode !== 200) {
-      throw new Error('RESPONSE_NOT_OK');
-    }
-
-    if (!browser.contentType || !/\btext\/html\b/.test(browser.contentType)) {
-      this.wappalyzer.log(`Skipping; url: ${pageUrl.href}; content type: ${browser.contentType}`, 'driver');
-
-      delete this.analyzedPageUrls[pageUrl.href];
-    }
-
     const { cookies, headers, scripts } = browser;
 
     const html = processHtml(browser.html, this.options.htmlMaxCols, this.options.htmlMaxRows);
     const js = processJs(browser.js, this.wappalyzer.jsPatterns);
+
+    let language = null;
+
+    try {
+      [[language]] = languageDetect.detect(html.replace(/<\/?[^>]+(>|$)/g, ' '), 1);
+    } catch (error) {
+      this.wappalyzer.log(`${error.message || error}; url: ${pageUrl.href}`, 'driver', 'error');
+    }
 
     await this.wappalyzer.analyze(pageUrl, {
       cookies,
@@ -246,6 +248,7 @@ class Driver {
       html,
       js,
       scripts,
+      language,
     });
 
     const reducedLinks = Array.prototype.reduce.call(

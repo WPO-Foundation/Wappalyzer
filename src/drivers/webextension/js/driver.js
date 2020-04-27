@@ -3,7 +3,7 @@
  */
 
 /* eslint-env browser */
-/* global browser, chrome, fetch, Wappalyzer */
+/* global browser, chrome, Wappalyzer */
 
 /** global: browser */
 /** global: chrome */
@@ -24,10 +24,6 @@ browser.tabs.onRemoved.addListener((tabId) => {
 function userAgent() {
   const url = chrome.extension.getURL('/');
 
-  if (url.match(/^chrome-/)) {
-    return 'chrome';
-  }
-
   if (url.match(/^moz-/)) {
     return 'firefox';
   }
@@ -35,6 +31,8 @@ function userAgent() {
   if (url.match(/^ms-browser-/)) {
     return 'edge';
   }
+
+  return 'chrome';
 }
 
 /**
@@ -162,7 +160,20 @@ browser.runtime.onConnect.addListener((port) => {
 
         break;
       case 'analyze':
-        wappalyzer.analyze(url, message.subject, { tab: port.sender.tab });
+        if (message.subject.html) {
+          browser.i18n.detectLanguage(message.subject.html)
+            .then(({ languages }) => {
+              const language = languages
+                .filter(({ percentage }) => percentage >= 75)
+                .map(({ language: lang }) => lang)[0];
+
+              message.subject.language = language;
+
+              wappalyzer.analyze(url, message.subject, { tab: port.sender.tab });
+            });
+        } else {
+          wappalyzer.analyze(url, message.subject, { tab: port.sender.tab });
+        }
 
         await setOption('hostnameCache', wappalyzer.hostnameCache);
 
@@ -299,7 +310,7 @@ wappalyzer.driver.getRobotsTxt = async (host, secure = false) => {
     let response;
 
     try {
-      response = await fetch(`http${secure ? 's' : ''}://${host}/robots.txt`, { redirect: 'follow' });
+      response = await fetch(`http${secure ? 's' : ''}://${host}/robots.txt`, { redirect: 'follow', mode: 'no-cors' });
     } catch (error) {
       wappalyzer.log(error, 'driver', 'error');
 
