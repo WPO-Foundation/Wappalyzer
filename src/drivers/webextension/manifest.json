@@ -4,7 +4,7 @@
   "author": "Wappalyzer",
   "homepage_url": "https://www.wappalyzer.com",
   "description": "Identify web technologies",
-  "version": "5.9.32",
+  "version": "6.0.15",
   "default_locale": "en",
   "manifest_version": 2,
   "icons": {
@@ -27,7 +27,6 @@
   },
   "background": {
     "page": "html/background.html"
-
   },
   "content_scripts": [
     {
@@ -36,7 +35,6 @@
         "https://*/*"
       ],
       "js": [
-        "node_modules/webextension-polyfill/dist/browser-polyfill.js",
         "js/content.js"
       ],
       "run_at": "document_idle"
@@ -46,12 +44,7 @@
         "http://*/*",
         "https://*/*"
       ],
-      "exclude_matches": [
-        "https://*.modirum.com/*",
-        "https://www.alphaecommerce.gr/*"
-      ],
       "js": [
-        "node_modules/webextension-polyfill/dist/browser-polyfill.js",
         "js/lib/iframe.js"
       ],
       "run_at": "document_start",
