@@ -3,7 +3,11 @@
 /* globals chrome */
 
 const Utils = {
-  agent: chrome.extension.getURL('/').startsWith('moz-') ? 'firefox' : 'chrome',
+  agent: chrome.extension.getURL('/').startsWith('moz-')
+    ? 'firefox'
+    : chrome.extension.getURL('/').startsWith('safari-')
+    ? 'safari'
+    : 'chrome',
 
   /**
    * Use promises instead of callbacks
@@ -60,7 +64,7 @@ const Utils = {
   async setOption(name, value) {
     try {
       await Utils.promisify(chrome.storage.local, 'set', {
-        [name]: value
+        [name]: value,
       })
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -83,7 +87,7 @@ const Utils = {
         {
           source,
           func,
-          args: args ? (Array.isArray(args) ? args : [args]) : []
+          args: args ? (Array.isArray(args) ? args : [args]) : [],
         },
         (response) => {
           chrome.runtime.lastError
@@ -92,5 +96,5 @@ const Utils = {
         }
       )
     })
-  }
+  },
 }

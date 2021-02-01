@@ -7,6 +7,10 @@ const Content = {
    * Initialise content script
    */
   async init() {
+    if (await Content.driver('isDisabledDomain', location.href)) {
+      return
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     try {
@@ -43,6 +47,25 @@ const Content = {
             : resolve()
         ))
 
+      // CSS rules
+      let css = []
+
+      try {
+        for (const sheet of Array.from(document.styleSheets)) {
+          for (const rules of Array.from(sheet.cssRules)) {
+            css.push(rules.cssText)
+
+            if (css.length >= 3000) {
+              break
+            }
+          }
+        }
+      } catch (error) {
+        // Continue
+      }
+
+      css = css.join('\n')
+
       // Script tags
       const scripts = Array.from(document.scripts)
         .filter(({ src }) => src)
@@ -65,23 +88,30 @@ const Content = {
 
       Content.driver('onContentLoad', [
         location.href,
-        { html, scripts, meta },
-        language
+        { html, css, scripts, meta },
+        language,
       ])
 
-      Content.onGetTechnologies(await Content.driver('getTechnologies'))
+      const technologies = await Content.driver('getTechnologies')
+
+      Content.onGetTechnologies(technologies)
+
+      // Delayed second pass to capture async JS
+      await new Promise((resolve) => setTimeout(resolve, 5000))
+
+      Content.onGetTechnologies(technologies)
     } catch (error) {
       Content.driver('error', error)
     }
   },
 
-  driver(func, args, callback) {
+  driver(func, args) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
         {
           source: 'content.js',
           func,
-          args: args ? (Array.isArray(args) ? args : [args]) : []
+          args: args ? (Array.isArray(args) ? args : [args]) : [],
         },
         (response) => {
           chrome.runtime.lastError
@@ -111,7 +141,7 @@ const Content = {
         chrome.runtime.sendMessage({
           source: 'content.js',
           func: 'analyzeJs',
-          args: [location.href.split('#')[0], data.wappalyzer.js]
+          args: [location.href.split('#')[0], data.wappalyzer.js],
         })
 
         script.remove()
@@ -123,15 +153,86 @@ const Content = {
         wappalyzer: {
           technologies: technologies
             .filter(({ js }) => Object.keys(js).length)
-            .map(({ name, js }) => ({ name, chains: Object.keys(js) }))
-        }
+            .map(({ name, js }) => ({ name, chains: Object.keys(js) })),
+        },
       })
     }
 
     script.setAttribute('src', chrome.extension.getURL('js/inject.js'))
 
     document.body.appendChild(script)
-  }
+
+    // DOM
+    const dom = technologies
+      .filter(({ dom }) => dom)
+      .map(({ name, dom }) => ({ name, dom }))
+      .reduce((technologies, { name, dom }) => {
+        const toScalar = (value) =>
+          typeof value === 'string' || typeof value === 'number'
+            ? value
+            : !!value
+
+        Object.keys(dom).forEach((selector) => {
+          const nodes = document.querySelectorAll(selector)
+
+          if (!nodes.length) {
+            return
+          }
+
+          dom[selector].forEach(({ text, properties, attributes }) => {
+            nodes.forEach((node) => {
+              if (text) {
+                const value = node.textContent.trim()
+
+                if (value) {
+                  technologies.push({
+                    name,
+                    selector,
+                    text: value,
+                  })
+                }
+              }
+
+              if (properties) {
+                Object.keys(properties).forEach((property) => {
+                  if (Object.prototype.hasOwnProperty.call(node, property)) {
+                    const value = node[property]
+
+                    if (typeof value !== 'undefined') {
+                      technologies.push({
+                        name,
+                        selector,
+                        property,
+                        value: toScalar(value),
+                      })
+                    }
+                  }
+                })
+              }
+
+              if (attributes) {
+                Object.keys(attributes).forEach((attribute) => {
+                  if (node.hasAttribute(attribute)) {
+                    const value = node.getAttribute(attribute)
+
+                    technologies.push({
+                      name,
+                      selector,
+                      attribute,
+                      value: toScalar(value),
+                    })
+                  }
+                })
+              }
+            })
+          })
+        })
+
+        return technologies
+      }, [])
+
+    Content.driver('analyzeDom', [location.href, dom])
+  },
 }
 
 if (/complete|interactive|loaded/.test(document.readyState)) {

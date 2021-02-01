@@ -12,17 +12,22 @@
     "library",
     "software"
   ],
-  "homepage": "https://www.wappalyzer.com",
-  "version": "6.1.1",
+  "homepage": "https://www.wappalyzer.com/",
+  "version": "6.5.22",
   "author": "Wappalyzer",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/aliasio/wappalyzer"
   },
-  "funding": {
-    "url": "https://github.com/sponsors/aliasio"
-  },
+  "funding": [
+    {
+      "url": "https://github.com/sponsors/aliasio"
+    },
+    {
+      "url": "https://paypal.me/elbertalias"
+    }
+  ],
   "main": "wappalyzer.js",
   "files": [
     "wappalyzer.js"

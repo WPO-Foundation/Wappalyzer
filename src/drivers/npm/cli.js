@@ -19,7 +19,7 @@ const aliases = {
   m: 'maxUrls',
   P: 'pretty',
   r: 'recursive',
-  w: 'maxWait'
+  w: 'maxWait',
 }
 
 while (true) {
@@ -76,8 +76,8 @@ Options:
   process.exit(1)
 }
 
-;(async function() {
-  const wappalyzer = await new Wappalyzer(options)
+;(async function () {
+  const wappalyzer = new Wappalyzer(options)
 
   try {
     await wappalyzer.init()
