@@ -8,12 +8,15 @@ const {
   analyze,
   analyzeManyToMany,
   resolve,
+  getTechnology,
 } = Wappalyzer
-const { agent, promisify, getOption, setOption, open } = Utils
+const { agent, promisify, getOption, setOption, open, globEscape } = Utils
 
 const expiry = 1000 * 60 * 60 * 24
 
 const hostnameIgnoreList = /((local|dev(elop(ment)?)?|stag(e|ing)?|preprod|preview|test(ing)?|demo(shop)?|admin|cache)[.-]|localhost|wappalyzer|google|facebook|twitter|reddit|yahoo|wikipedia|amazon|youtube|\/admin|\.local|\.test|\.dev|^[0-9.]$)/
+
+const xhrDebounce = []
 
 const Driver = {
   lastPing: Date.now(),
@@ -64,6 +67,11 @@ const Driver = {
       { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
       ['responseHeaders']
     )
+
+    chrome.webRequest.onCompleted.addListener(Driver.onXhrRequestComplete, {
+      urls: ['http://*/*', 'https://*/*'],
+      types: ['xmlhttprequest'],
+    })
 
     chrome.tabs.onRemoved.addListener((id) => (Driver.cache.tabs[id] = null))
 
@@ -184,6 +192,7 @@ const Driver = {
           )
 
           if (text) {
+            console.log(selector, text)
             return analyzeManyToMany(technology, 'dom.text', {
               [selector]: [text],
             })
@@ -209,6 +218,19 @@ const Driver = {
         })
       )
     )
+  },
+
+  /**
+   * Force a technology detection by URL and technology name
+   * @param {String} url
+   * @param {String} name
+   */
+  detectTechnology(url, name) {
+    const technology = getTechnology(name)
+
+    return Driver.onDetect(url, [
+      { technology, pattern: { regex: '', confidence: 100 }, version: '' },
+    ])
   },
 
   /**
@@ -242,18 +264,18 @@ const Driver = {
    * @param {Object} request
    */
   async onWebRequestComplete(request) {
-    if (await Driver.isDisabledDomain(request.url)) {
-      return
-    }
-
     if (request.responseHeaders) {
+      if (await Driver.isDisabledDomain(request.url)) {
+        return
+      }
+
       const headers = {}
 
       try {
         await new Promise((resolve) => setTimeout(resolve, 500))
 
         const [tab] = await promisify(chrome.tabs, 'query', {
-          url: [request.url],
+          url: globEscape(request.url),
         })
 
         if (tab) {
@@ -267,11 +289,41 @@ const Driver = {
             )
           })
 
-          await Driver.onDetect(request.url, analyze({ headers }))
+          Driver.onDetect(request.url, analyze({ headers })).catch(Driver.error)
         }
       } catch (error) {
         Driver.error(error)
       }
+    }
+  },
+
+  /**
+   * Analyse XHR request hostnames
+   * @param {Object} request
+   */
+  async onXhrRequestComplete(request) {
+    if (await Driver.isDisabledDomain(request.url)) {
+      return
+    }
+
+    let hostname
+
+    try {
+      ;({ hostname } = new URL(request.url))
+    } catch (error) {
+      return
+    }
+
+    if (!xhrDebounce.includes(hostname)) {
+      xhrDebounce.push(hostname)
+
+      setTimeout(() => {
+        xhrDebounce.splice(xhrDebounce.indexOf(hostname), 1)
+
+        Driver.onDetect(request.originUrl, analyze({ xhr: hostname })).catch(
+          Driver.error
+        )
+      }, 1000)
     }
   },
 
@@ -411,7 +463,15 @@ const Driver = {
     await Driver.setIcon(url, resolved)
 
     if (url) {
-      const tabs = await promisify(chrome.tabs, 'query', { url })
+      let tabs = []
+
+      try {
+        tabs = await promisify(chrome.tabs, 'query', {
+          url: globEscape(url),
+        })
+      } catch (error) {
+        // Continue
+      }
 
       tabs.forEach(({ id }) => (Driver.cache.tabs[id] = resolved))
     }
@@ -440,48 +500,60 @@ const Driver = {
 
     let icon = 'default.svg'
 
+    const _technologies = technologies.filter(
+      ({ slug }) => slug !== 'cart-functionality'
+    )
+
     if (dynamicIcon) {
       const pinnedCategory = parseInt(await getOption('pinnedCategory'), 10)
 
-      const pinned = technologies.find(({ categories }) =>
+      const pinned = _technologies.find(({ categories }) =>
         categories.some(({ id }) => id === pinnedCategory)
       )
 
-      ;({ icon } = pinned || technologies[0] || { icon })
+      ;({ icon } = pinned || _technologies[0] || { icon })
     }
 
     if (!url) {
       return
     }
 
-    ;(await promisify(chrome.tabs, 'query', { url })).forEach(
-      ({ id: tabId }) => {
-        chrome.browserAction.setBadgeText(
-          {
-            tabId,
-            text:
-              badge && technologies.length
-                ? technologies.length.toString()
-                : '',
-          },
-          () => {}
-        )
+    let tabs = []
 
-        chrome.browserAction.setIcon(
-          {
-            tabId,
-            path: chrome.extension.getURL(
-              `../images/icons/${
-                /\.svg$/i.test(icon)
-                  ? `converted/${icon.replace(/\.svg$/, '.png')}`
-                  : icon
-              }`
-            ),
-          },
-          () => {}
-        )
-      }
-    )
+    try {
+      tabs = await promisify(chrome.tabs, 'query', {
+        url: globEscape(url),
+      })
+    } catch (error) {
+      // Continue
+    }
+
+    tabs.forEach(({ id: tabId }) => {
+      chrome.browserAction.setBadgeText(
+        {
+          tabId,
+          text:
+            badge && _technologies.length
+              ? _technologies.length.toString()
+              : '',
+        },
+        () => {}
+      )
+
+      chrome.browserAction.setIcon(
+        {
+          tabId,
+          path: chrome.extension.getURL(
+            `../images/icons/${
+              /\.svg$/i.test(icon)
+                ? `converted/${icon.replace(/\.svg$/, '.png')}`
+                : icon
+            }`
+          ),
+        },
+        () => {}
+      )
+    })
   },
 
   /**

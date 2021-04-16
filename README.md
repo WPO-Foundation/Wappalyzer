@@ -7,6 +7,8 @@
 * [Chrome extension](https://chrome.google.com/webstore/detail/wappalyzer/gppongmhjkpfnbhagpmjfkannfbllamg)
 * [Firefox add-on](https://addons.mozilla.org/en-US/firefox/addon/wappalyzer/)
 * [Edge extension](https://microsoftedge.microsoft.com/addons/detail/mnbndgmknlpdjdnjfmfcdjoegcckoikn)
+* [Safari extension](https://apps.apple.com/app/wappalyzer/id1520333300)
+* [All apps and integrations](https://www.wappalyzer.com/api/download)
 * [Wappalyzer REST APIs](https://www.wappalyzer.com/api/)
 
 ## Prerequisites
@@ -93,10 +95,11 @@ Patterns (regular expressions) are kept in [`src/technologies.json`](https://git
     "generator": "(?:Example|Another Example)"
   },
   "script": "example-([0-9.]+)\\.js\\;confidence:50\\;version:\\1",
-  "url": ".+\\.example\\.com",
+  "url": "example\\.com",
+  "xhr": "example\\.com",
   "oss": true,
   "saas": true,
-  "pricing": ["low", "medium", "high", "freemium", "onetime", "recurring", "poa"],
+  "pricing": ["medium", "freemium", "recurring"],
   "website": "https://example.com",
 }
 ```
@@ -201,9 +204,9 @@ Cost indicator (based on a typical plan or average monthly price) and available 
 
 One of:
 <ul>
-  <li><code>low</code> Up to US 100 / mo</li>
-  <li><code>mid</code> Up US 1,000 / mo</li>
-  <li><code>high</code> More than 10,000 / mo</li>
+  <li><code>low</code>Less than US $100 / mo</li>
+  <li><code>mid</code>Between US $100 - $1,000 / mo</li>
+  <li><code>high</code>More than US $1,000 / mo</li>
 </ul>
 
 Plus any of:
@@ -351,6 +354,12 @@ Plus any of:
       <td>String</td>
       <td>Full URL of the page.</td>
       <td><code>"^https?//.+\\.wordpress\\.com"</code></td>
+    </tr>
+    <tr>
+      <td><code>xhr</code></td>
+      <td>String</td>
+      <td>Hostnames of XHR requests.</td>
+      <td><code>"cdn\\.netlify\\.com"</code></td>
     </tr>
     <tr>
       <td><code>meta</code></td>
