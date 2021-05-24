@@ -2,15 +2,44 @@
 /* eslint-env browser */
 /* globals chrome, Utils */
 
-const {
-  agent,
-  open,
-  i18n,
-  getOption,
-  setOption,
-  promisify,
-  sendMessage,
-} = Utils
+const { agent, open, i18n, getOption, setOption, promisify, sendMessage } =
+  Utils
+
+const baseUrl = 'https://www.wappalyzer.com'
+const utm = '?utm_source=popup&utm_medium=extension&utm_campaign=wappalyzer'
+
+const footers = [
+  {
+    heading: 'Generate sales leads',
+    body: 'Find new prospects by the technologies they use. Reach out to customers of Shopify, Magento, Salesforce and others.',
+    buttonText: 'Create a lead list',
+    buttonLink: `${baseUrl}/lists/${utm}`,
+  },
+  {
+    heading: 'Connect Wappalyzer to your CRM',
+    body: 'See the technology stacks of your leads without leaving your CRM. Connect to HubSpot, Pipedrive and many others.',
+    buttonText: 'See all apps',
+    buttonLink: `${baseUrl}/apps/${utm}`,
+  },
+  {
+    heading: 'Enrich your data with tech stacks',
+    body: 'Upload a list of websites to get a report of the technologies in use, such as CMS or ecommerce platforms.',
+    buttonText: 'Upload a list',
+    buttonLink: `${baseUrl}/lookup/${utm}#bulk`,
+  },
+  {
+    heading: 'Automate technology lookups',
+    body: 'Our APIs provide instant access to website technology stacks, contact details and social media profiles.',
+    buttonText: 'Compare APIs',
+    buttonLink: `${baseUrl}/api/${utm}`,
+  },
+  {
+    heading: 'Wappalyzer for businesses',
+    body: 'Sign up for a plan to get monthly credits to spend on any product, including lead lists and technology lookups.',
+    buttonText: 'Compare plans',
+    buttonLink: `${baseUrl}/pricing/${utm}`,
+  },
+]
 
 function setDisabledDomain(enabled) {
   if (enabled) {
@@ -47,13 +76,26 @@ const Popup = {
     }, {})
 
     // Disabled domains
+    const dynamicIcon = await getOption('dynamicIcon', false)
+
+    if (dynamicIcon) {
+      document.querySelector('body').classList.add('dynamic-icon')
+    }
+
+    // Disabled domains
     let disabledDomains = await getOption('disabledDomains', [])
 
-    // Theme mode
-    const themeMode = await getOption('themeMode', false)
+    // Dark mode
+    const theme = await getOption('theme', 'light')
 
-    if (themeMode) {
-      document.querySelector('body').classList.add('theme-mode')
+    if (theme === 'dark') {
+      document.querySelector('body').classList.add('dark')
+      document
+        .querySelector('.header__theme--light')
+        .classList.remove('header__icon--hidden')
+      document
+        .querySelector('.header__theme--dark')
+        .classList.add('header__icon--hidden')
     }
 
     // Terms
@@ -69,6 +111,7 @@ const Popup = {
       document.querySelector('.terms').classList.remove('terms--hidden')
       document.querySelector('.detections').classList.add('detections--hidden')
       document.querySelector('.empty').classList.add('empty--hidden')
+      document.querySelector('.footer').classList.add('footer--hidden')
 
       document
         .querySelector('.terms__button--accept')
@@ -78,6 +121,7 @@ const Popup = {
 
           document.querySelector('.terms').classList.add('terms--hidden')
           document.querySelector('.empty').classList.remove('empty--hidden')
+          document.querySelector('.footer').classList.remove('footer--hidden')
 
           Popup.onGetDetections(await Popup.driver('getDetections'))
         })
@@ -90,6 +134,7 @@ const Popup = {
 
           document.querySelector('.terms').classList.add('terms--hidden')
           document.querySelector('.empty').classList.remove('empty--hidden')
+          document.querySelector('.footer').classList.remove('footer--hidden')
 
           Popup.onGetDetections(await Popup.driver('getDetections'))
         })
@@ -144,6 +189,64 @@ const Popup = {
       .querySelector('.header__settings')
       .addEventListener('click', () => chrome.runtime.openOptionsPage())
 
+    // Theme
+    const body = document.querySelector('body')
+    const dark = document.querySelector('.header__theme--dark')
+    const light = document.querySelector('.header__theme--light')
+
+    document.querySelectorAll('.header__theme').forEach((el) =>
+      el.addEventListener('click', async () => {
+        const theme = await getOption('theme', 'light')
+
+        body.classList[theme === 'dark' ? 'remove' : 'add']('dark')
+        body.classList[theme === 'dark' ? 'add' : 'remove']('light')
+        dark.classList[theme === 'dark' ? 'remove' : 'add'](
+          'header__icon--hidden'
+        )
+        light.classList[theme === 'dark' ? 'add' : 'remove'](
+          'header__icon--hidden'
+        )
+
+        await setOption('theme', theme === 'dark' ? 'light' : 'dark')
+      })
+    )
+
+    // Footer
+    const item = footers[Math.round(Math.random() * (footers.length - 1))]
+
+    document.querySelector('.footer__heading-text').textContent = item.heading
+    document.querySelector('.footer__content-body').textContent = item.body
+    document.querySelector('.footer__button-text').textContent = item.buttonText
+    document.querySelector('.footer__button-link').href = item.buttonLink
+
+    const collapseFooter = await getOption('collapseFooter', false)
+
+    const footer = document.querySelector('.footer')
+    const footerClose = document.querySelector('.footer__toggle--close')
+    const footerOpen = document.querySelector('.footer__toggle--open')
+
+    if (collapseFooter) {
+      footer.classList.add('footer--collapsed')
+      footerClose.classList.add('footer__toggle--hidden')
+      footerOpen.classList.remove('footer__toggle--hidden')
+    }
+
+    document
+      .querySelector('.footer__heading')
+      .addEventListener('click', async () => {
+        const collapsed = footer.classList.contains('footer--collapsed')
+
+        footer.classList[collapsed ? 'remove' : 'add']('footer--collapsed')
+        footerClose.classList[collapsed ? 'remove' : 'add'](
+          'footer__toggle--hidden'
+        )
+        footerOpen.classList[collapsed ? 'add' : 'remove'](
+          'footer__toggle--hidden'
+        )
+
+        await setOption('collapseFooter', !collapsed)
+      })
+
     // Apply internationalization
     i18n()
   },
@@ -188,18 +291,20 @@ const Popup = {
    * @param {Array} detections
    */
   async onGetDetections(detections = []) {
-    detections = detections
+    detections = (detections || [])
       .filter(({ confidence }) => confidence >= 50)
       .filter(({ slug }) => slug !== 'cart-functionality')
 
     if (!detections || !detections.length) {
       document.querySelector('.empty').classList.remove('empty--hidden')
       document.querySelector('.detections').classList.add('detections--hidden')
+      document.querySelector('.footer').classList.add('footer--hidden')
 
       return
     }
 
     document.querySelector('.empty').classList.add('empty--hidden')
+    document.querySelector('.footer').classList.remove('footer--hidden')
 
     const el = document.querySelector('.detections')
 
@@ -249,7 +354,7 @@ const Popup = {
         ({ name, slug, confidence, version, icon, website }) => {
           const technologyNode = Popup.templates.technology.cloneNode(true)
 
-          const image = technologyNode.querySelector('.technology__icon')
+          const image = technologyNode.querySelector('.technology__icon img')
 
           image.src = `../images/icons/${icon}`
 

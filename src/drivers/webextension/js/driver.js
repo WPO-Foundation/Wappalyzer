@@ -1,6 +1,6 @@
 'use strict'
 /* eslint-env browser */
-/* globals chrome, Wappalyzer, Utils */
+/* globals chrome, Wappalyzer, Utils, next */
 
 const {
   setTechnologies,
@@ -14,7 +14,8 @@ const { agent, promisify, getOption, setOption, open, globEscape } = Utils
 
 const expiry = 1000 * 60 * 60 * 24
 
-const hostnameIgnoreList = /((local|dev(elop(ment)?)?|stag(e|ing)?|preprod|preview|test(ing)?|demo(shop)?|admin|cache)[.-]|localhost|wappalyzer|google|facebook|twitter|reddit|yahoo|wikipedia|amazon|youtube|\/admin|\.local|\.test|\.dev|^[0-9.]$)/
+const hostnameIgnoreList =
+  /\b((local|dev(elop(ment)?)?|stag(e|ing)?|preprod|preview|test(ing)?|[^a-z]demo(shop)?|cache)[.-]|localhost|((wappalyzer|google|facebook|twitter|reddit|yahoo|wikipedia|amazon|youtube)\.)|\.local|\.test|\.netlify\.app|\.shopifypreview\.com|^[0-9.]+|[\d.]+$|^([a-f0-9:]+:+)+[a-f0-9]+$)/
 
 const xhrDebounce = []
 
@@ -160,17 +161,21 @@ const Driver = {
    * @param {String} url
    * @param {Array} js
    */
-  analyzeJs(url, js) {
+  async analyzeJs(url, js) {
     return Driver.onDetect(
       url,
       Array.prototype.concat.apply(
         [],
-        js.map(({ name, chain, value }) =>
-          analyzeManyToMany(
-            Wappalyzer.technologies.find(({ name: _name }) => name === _name),
-            'js',
-            { [chain]: [value] }
-          )
+        await Promise.all(
+          js.map(async ({ name, chain, value }) => {
+            await next()
+
+            return analyzeManyToMany(
+              Wappalyzer.technologies.find(({ name: _name }) => name === _name),
+              'js',
+              { [chain]: [value] }
+            )
+          })
         )
       )
     )
@@ -181,41 +186,59 @@ const Driver = {
    * @param {String} url
    * @param {Array} dom
    */
-  analyzeDom(url, dom) {
+  async analyzeDom(url, dom) {
     return Driver.onDetect(
       url,
       Array.prototype.concat.apply(
         [],
-        dom.map(({ name, selector, text, property, attribute, value }) => {
-          const technology = Wappalyzer.technologies.find(
-            ({ name: _name }) => name === _name
-          )
+        await Promise.all(
+          dom.map(
+            async (
+              { name, selector, exists, text, property, attribute, value },
+              index
+            ) => {
+              await next()
 
-          if (text) {
-            console.log(selector, text)
-            return analyzeManyToMany(technology, 'dom.text', {
-              [selector]: [text],
-            })
-          }
+              const technology = Wappalyzer.technologies.find(
+                ({ name: _name }) => name === _name
+              )
 
-          if (property) {
-            return analyzeManyToMany(technology, `dom.properties.${property}`, {
-              [selector]: [value],
-            })
-          }
-
-          if (attribute) {
-            return analyzeManyToMany(
-              technology,
-              `dom.attributes.${attribute}`,
-              {
-                [selector]: [value],
+              if (typeof exists !== 'undefined') {
+                return analyzeManyToMany(technology, 'dom.exists', {
+                  [selector]: [''],
+                })
               }
-            )
-          }
 
-          return []
-        })
+              if (typeof text !== 'undefined') {
+                return analyzeManyToMany(technology, 'dom.text', {
+                  [selector]: [text],
+                })
+              }
+
+              if (typeof property !== 'undefined') {
+                return analyzeManyToMany(
+                  technology,
+                  `dom.properties.${property}`,
+                  {
+                    [selector]: [value],
+                  }
+                )
+              }
+
+              if (typeof attribute !== 'undefined') {
+                return analyzeManyToMany(
+                  technology,
+                  `dom.attributes.${attribute}`,
+                  {
+                    [selector]: [value],
+                  }
+                )
+              }
+
+              return []
+            }
+          )
+        )
       )
     )
   },
@@ -289,7 +312,9 @@ const Driver = {
             )
           })
 
-          Driver.onDetect(request.url, analyze({ headers })).catch(Driver.error)
+          Driver.onDetect(request.url, await analyze({ headers })).catch(
+            Driver.error
+          )
         }
       } catch (error) {
         Driver.error(error)
@@ -317,12 +342,13 @@ const Driver = {
     if (!xhrDebounce.includes(hostname)) {
       xhrDebounce.push(hostname)
 
-      setTimeout(() => {
+      setTimeout(async () => {
         xhrDebounce.splice(xhrDebounce.indexOf(hostname), 1)
 
-        Driver.onDetect(request.originUrl, analyze({ xhr: hostname })).catch(
-          Driver.error
-        )
+        Driver.onDetect(
+          request.originUrl,
+          await analyze({ xhr: hostname })
+        ).catch(Driver.error)
       }, 1000)
     }
   },
@@ -349,7 +375,12 @@ const Driver = {
         {}
       )
 
-      await Driver.onDetect(url, analyze({ url, ...items }), language, true)
+      await Driver.onDetect(
+        url,
+        await analyze({ url, ...items }),
+        language,
+        true
+      )
     } catch (error) {
       Driver.error(error)
     }
@@ -698,9 +729,8 @@ const Driver = {
       const hostnames = Object.keys(Driver.cache.hostnames).reduce(
         (hostnames, hostname) => {
           // eslint-disable-next-line standard/computed-property-even-spacing
-          const { url, language, detections, hits } = Driver.cache.hostnames[
-            hostname
-          ]
+          const { url, language, detections, hits } =
+            Driver.cache.hostnames[hostname]
 
           if (!hostnameIgnoreList.test(hostname) && hits >= 3) {
             hostnames[url] = hostnames[url] || {
