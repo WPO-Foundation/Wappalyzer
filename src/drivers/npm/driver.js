@@ -265,6 +265,8 @@ class Site {
 
     this.dnsChecked = false
     this.dns = []
+
+    this.probed = false
   }
 
   log(message, source = 'driver', type = 'log') {
@@ -298,16 +300,21 @@ class Site {
 
   promiseTimeout(
     promise,
+    fallback,
     errorMessage = 'The website took too long to respond'
   ) {
     let timeout = null
+
+    if (!(promise instanceof Promise)) {
+      return Promise.resolve(promise)
+    }
 
     return Promise.race([
       new Promise((resolve, reject) => {
         timeout = setTimeout(() => {
           clearTimeout(timeout)
 
-          reject(new Error(errorMessage))
+          fallback ? resolve(fallback) : reject(new Error(errorMessage))
         }, this.options.maxWait)
       }),
       promise.then((value) => {
@@ -467,10 +474,12 @@ class Site {
                   rel,
                 })
               )
-            )
-          ).catch(() => [])
-        ).jsonValue()
-      ).catch(() => [])
+            ),
+            { jsonValue: () => [] }
+          )
+        ).jsonValue(),
+        []
+      )
 
       // CSS
       const css = await this.promiseTimeout(
@@ -498,10 +507,12 @@ class Site {
               }
 
               return css.join('\n')
-            }, this.options.htmlMaxRows)
-          ).catch(() => '')
-        ).jsonValue()
-      ).catch(() => '')
+            }, this.options.htmlMaxRows),
+            { jsonValue: () => '' }
+          )
+        ).jsonValue(),
+        ''
+      )
 
       // Script tags
       const scripts = await this.promiseTimeout(
@@ -511,10 +522,12 @@ class Site {
               Array.from(document.getElementsByTagName('script'))
                 .map(({ src }) => src)
                 .filter((src) => src)
-            )
-          ).catch(() => [])
-        ).jsonValue()
-      ).catch(() => [])
+            ),
+            { jsonValue: () => [] }
+          )
+        ).jsonValue(),
+        []
+      )
 
       // Meta tags
       const meta = await this.promiseTimeout(
@@ -534,10 +547,12 @@ class Site {
                 },
                 {}
               )
-            )
-          ).catch(() => [])
-        ).jsonValue()
-      ).catch(() => [])
+            ),
+            { jsonValue: () => [] }
+          )
+        ).jsonValue(),
+        []
+      )
 
       // JavaScript
       const js = await this.promiseTimeout(
@@ -572,8 +587,9 @@ class Site {
           Wappalyzer.technologies
             .filter(({ js }) => Object.keys(js).length)
             .map(({ name, js }) => ({ name, chains: Object.keys(js) }))
-        )
-      ).catch(() => [])
+        ),
+        []
+      )
 
       // DOM
       const dom = await this.promiseTimeout(
@@ -665,8 +681,9 @@ class Site {
           Wappalyzer.technologies
             .filter(({ dom }) => dom && dom.constructor === Object)
             .map(({ name, dom }) => ({ name, dom }))
-        )
-      ).catch(() => [])
+        ),
+        []
+      )
 
       // Cookies
       const cookies = (await page.cookies()).reduce(
@@ -714,8 +731,9 @@ class Site {
               }
 
               return []
-            })
-          ).catch(() => [])
+            }),
+            []
+          )
         }
 
         const domain = url.hostname.replace(/^www\./, '')
@@ -833,14 +851,16 @@ class Site {
         await sleep(this.options.delay * index)
       }
 
-      if (this.options.probe) {
-        await this.probe(url)
-      }
-
       const links = await this.goto(url)
 
       if (links && this.options.recursive && depth < this.options.maxDepth) {
         await this.batch(links.slice(0, this.options.maxUrls), depth + 1)
+      }
+
+      if (this.options.probe && !this.probed) {
+        this.probed = true
+
+        await this.probe(url)
       }
     } catch (error) {
       this.analyzedUrls[url.href] = {
@@ -888,6 +908,7 @@ class Site {
   async probe(url) {
     const files = {
       robots: '/robots.txt',
+      magento: '/magento_version',
     }
 
     for (const file of Object.keys(files)) {
